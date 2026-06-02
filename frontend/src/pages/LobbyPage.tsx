@@ -17,6 +17,13 @@ export function LobbyPage() {
     }
   }, [navigate, room]);
 
+  useEffect(() => {
+    const id = setInterval(() => {
+      void roomStore.fetchRoomSilent();
+    }, 2000);
+    return () => clearInterval(id);
+  }, [roomStore]);
+
   async function handleRefresh() {
     try {
       setRefreshError(null);
@@ -69,9 +76,18 @@ export function LobbyPage() {
         <button className="button button--secondary" disabled={isLoading} onClick={handleRefresh}>
           {isLoading ? "Refreshing..." : "Refresh Room"}
         </button>
-        <button className="button button--primary" onClick={() => navigate("/game")}>
-          Start Game
-        </button>
+        {room.isHost ? (
+          <button
+            className="button button--primary"
+            disabled={room.participants.length < 2}
+            onClick={() => {}}
+            title={room.participants.length < 2 ? "Need at least 2 players to start" : undefined}
+          >
+            Start Game
+          </button>
+        ) : (
+          <p className="status-line">Waiting for host to start…</p>
+        )}
       </div>
     </section>
   );

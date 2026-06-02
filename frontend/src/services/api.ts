@@ -12,6 +12,7 @@ export interface RoomSnapshot {
   participants: Participant[];
   availableWords: string[];
   roles: ParticipantRole[];
+  isHost: boolean;
 }
 
 export interface RoomSessionResponse {

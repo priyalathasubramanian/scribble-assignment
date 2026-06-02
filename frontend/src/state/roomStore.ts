@@ -98,6 +98,19 @@ class RoomStore {
     this.setRoomSnapshot(response.room);
     return response.room;
   }
+
+  async fetchRoomSilent() {
+    if (!this.state.room) {
+      return;
+    }
+
+    try {
+      const response = await api.fetchRoom(this.state.room.code, this.state.participantId ?? undefined);
+      this.setRoomSnapshot(response.room);
+    } catch {
+      // silent — lobby stays stable, retries on next interval
+    }
+  }
 }
 
 const RoomStoreContext = createContext<RoomStore | null>(null);
