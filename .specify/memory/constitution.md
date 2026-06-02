@@ -1,50 +1,105 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+SYNC IMPACT REPORT
+==================
+Version change: (unversioned template) → 1.0.0
+Modified principles: All placeholders replaced (first population)
+Added sections: Core Principles (I–V), Tech Constraints, Development Workflow, Governance
+Removed sections: N/A (first population)
+Templates requiring updates:
+  ✅ plan-template.md — Constitution Check gates align with principles below
+  ✅ spec-template.md — Functional requirements format consistent with FR-XXX style
+  ✅ tasks-template.md — Phase structure and parallel markers align with workflow
+Follow-up TODOs: None — all fields resolved from project context
+-->
+
+# Scribble Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. In-Memory Simplicity (NON-NEGOTIABLE)
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+The backend MUST use only in-memory data structures (JavaScript Maps/Arrays).
+No database, no file-based persistence, no external storage of any kind is permitted.
+State resets on server restart; this is acceptable and expected.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+**Rationale**: The assignment explicitly forbids databases to keep focus on API
+design, polling patterns, and game state logic rather than persistence concerns.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### II. Polling Over Real-Time
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+The frontend MUST use HTTP polling (interval-based GET requests) to synchronize
+state. No WebSockets, Server-Sent Events, or any push mechanism is permitted.
+Polling interval MUST be ≤ 2 seconds in active game/lobby screens.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+**Rationale**: WebSockets are forbidden by the assignment constraints. Polling
+teaches the tradeoffs of stateless HTTP for multi-player synchronization.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### III. No Authentication
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+The system MUST NOT implement authentication, sessions, JWT, OAuth, or any
+identity verification. Participant identity is scoped to a single in-memory
+participantId returned at join/create time. Clients are trusted with their own
+participantId.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+**Rationale**: Auth is explicitly out of scope. Adding it creates scope creep
+and obscures the game logic the assignment is designed to teach.
+
+### IV. Spec Kit Artifact Discipline
+
+Every feature group MUST have corresponding entries in spec.md, plan.md, and
+tasks.md before implementation begins. Artifacts MUST be updated incrementally
+as each feature group is completed. Discovery notes MUST document ≥ 3 incomplete
+behaviors and ≥ 2 assumptions before planning begins.
+
+**Rationale**: The assignment requires demonstrable Spec Kit workflow. Artifacts
+are graded artifacts, not optional documentation.
+
+### V. Minimal Abstraction
+
+Code MUST solve the immediate requirement and no more. No repository patterns,
+no dependency injection containers, no abstract base classes, no generics for
+hypothetical future types. Helper functions are acceptable; frameworks-within-
+frameworks are not.
+
+**Rationale**: Over-engineering a learning scaffold obscures the core game logic
+and makes the codebase harder to evaluate and extend.
+
+## Tech Constraints
+
+- **Language/Runtime**: TypeScript 5.x on Node.js 18+ (backend), TypeScript 5.x
+  in Vite 5 + React 18 (frontend)
+- **Backend framework**: Express 4.x with Zod validation — no other frameworks
+- **Frontend routing**: React Router v6 — no other router
+- **State (frontend)**: Custom store via `useSyncExternalStore` — no Redux,
+  Zustand, MobX, or similar
+- **Testing**: Vitest for both backend and frontend unit tests
+- **Forbidden**: WebSockets, databases (any), auth libraries, CSS-in-JS libraries,
+  component libraries (use existing app.css)
+- **Word list**: Fixed seed — rocket, pizza, castle, guitar, sunflower
+- **Roles**: drawer | guesser (seed data only, not user-configurable)
+
+## Development Workflow
+
+- Feature work MUST start from an up-to-date `scribble` branch
+- Each feature group MUST follow the Spec Kit sequence:
+  `/speckit-specify` → `/speckit-plan` → `/speckit-tasks` → `/speckit-implement`
+- Acceptance criteria in spec.md MUST be verified before marking a task done
+- All Zod schemas for new request bodies MUST live in `backend/src/api/schemas.ts`
+- New API endpoints MUST be added to `backend/src/api/rooms.ts` (or a new router
+  file if logically distinct) and registered in `backend/src/api/router.ts`
+- Frontend API calls MUST go through `frontend/src/services/api.ts` — no raw
+  `fetch` calls in components or pages
+- Polling logic MUST live in the relevant Page component or RoomStore method —
+  not scattered across components
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution supersedes all other development guidelines for this project.
+Amendments require: (1) a documented reason, (2) a version bump per semantic
+versioning, and (3) an updated Sync Impact Report prepended as an HTML comment.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+All PRs to `main` MUST verify compliance with principles I–V before merge.
+Complexity violations (e.g., adding a database) require explicit justification
+in the plan.md Complexity Tracking table and instructor approval.
+
+**Version**: 1.0.0 | **Ratified**: 2026-06-02 | **Last Amended**: 2026-06-02
