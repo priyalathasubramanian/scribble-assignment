@@ -10,6 +10,7 @@ export function LobbyPage() {
   const roomStore = useRoomStore();
   const { room, error, isLoading } = useRoomState();
   const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [startError, setStartError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!room) {
@@ -23,6 +24,12 @@ export function LobbyPage() {
     }, 2000);
     return () => clearInterval(id);
   }, [roomStore]);
+
+  useEffect(() => {
+    if (room?.status === "playing") {
+      navigate("/game");
+    }
+  }, [room?.status, navigate]);
 
   async function handleRefresh() {
     try {
@@ -77,14 +84,25 @@ export function LobbyPage() {
           {isLoading ? "Refreshing..." : "Refresh Room"}
         </button>
         {room.isHost ? (
-          <button
-            className="button button--primary"
-            disabled={room.participants.length < 2}
-            onClick={() => {}}
-            title={room.participants.length < 2 ? "Need at least 2 players to start" : undefined}
-          >
-            Start Game
-          </button>
+          <div>
+            {startError ? <p className="form__error">{startError}</p> : null}
+            <button
+              className="button button--primary"
+              disabled={room.participants.length < 2 || isLoading}
+              onClick={async () => {
+                try {
+                  setStartError(null);
+                  await roomStore.startGame();
+                  navigate("/game");
+                } catch (caughtError) {
+                  setStartError(caughtError instanceof Error ? caughtError.message : "Failed to start game");
+                }
+              }}
+              title={room.participants.length < 2 ? "Need at least 2 players to start" : undefined}
+            >
+              Start Game
+            </button>
+          </div>
         ) : (
           <p className="status-line">Waiting for host to start…</p>
         )}

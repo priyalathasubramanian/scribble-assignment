@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { Participant, Room, RoomSnapshot } from "../models/game.js";
-import { STARTER_ROLES, STARTER_WORDS } from "../seed/starterData.js";
+import { HttpError } from "../api/schemas.js";
+import { STARTER_WORDS } from "../seed/starterData.js";
 
 const rooms = new Map<string, Room>();
 
@@ -56,6 +57,8 @@ export function createRoom(playerName?: string) {
     status: "lobby",
     participants: [participant],
     hostId: participant.id,
+    currentDrawerId: null,
+    secretWord: null,
     createdAt: now(),
     updatedAt: now()
   };
@@ -73,6 +76,10 @@ export function joinRoom(code: string, playerName?: string) {
 
   if (!room) {
     return null;
+  }
+
+  if (room.status === "playing") {
+    throw new HttpError(409, "Game already in progress");
   }
 
   const participant = createParticipant(playerName);
@@ -97,13 +104,39 @@ export function saveRoom(room: Room) {
   return getRoom(room.code);
 }
 
+export function startGame(code: string, participantId: string) {
+  const room = rooms.get(code.toUpperCase());
+
+  if (!room) {
+    throw new HttpError(404, "Room not found");
+  }
+
+  if (participantId !== room.hostId) {
+    throw new HttpError(403, "Only the host can start the game");
+  }
+
+  if (room.status === "playing") {
+    throw new HttpError(409, "Game already in progress");
+  }
+
+  room.status = "playing";
+  room.currentDrawerId = room.hostId;
+  room.secretWord = STARTER_WORDS[0];
+  room.updatedAt = now();
+  rooms.set(room.code, room);
+
+  return cloneRoom(room);
+}
+
 export function toRoomSnapshot(room: Room, viewerParticipantId?: string): RoomSnapshot {
+  const isDrawer = room.status === "playing" && viewerParticipantId === room.currentDrawerId;
   return {
     code: room.code,
     status: room.status,
     participants: room.participants.map((participant) => ({ ...participant })),
     availableWords: listWords(),
-    roles: [...STARTER_ROLES],
-    isHost: viewerParticipantId === room.hostId
+    isHost: viewerParticipantId === room.hostId,
+    currentDrawerId: room.currentDrawerId,
+    secretWord: isDrawer ? room.secretWord : null
   };
 }
