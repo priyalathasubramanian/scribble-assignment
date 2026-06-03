@@ -31,6 +31,7 @@ describe("RoomStore.fetchRoomSilent", () => {
       isHost: true,
       currentDrawerId: "p1",
       secretWord: "rocket",
+      scores: [],
       gameState: null
     };
 
@@ -53,6 +54,7 @@ describe("RoomStore.fetchRoomSilent", () => {
       isHost: false,
       currentDrawerId: null,
       secretWord: null,
+      scores: [],
       gameState: null
     };
 
