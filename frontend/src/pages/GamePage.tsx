@@ -33,6 +33,13 @@ export function GamePage() {
     return () => clearInterval(id);
   }, [roomStore]);
 
+  // Navigate to lobby when host restarts (non-host detects via polling)
+  useEffect(() => {
+    if (room?.status === "lobby") {
+      navigate("/lobby", { replace: true });
+    }
+  }, [room?.status, navigate]);
+
   // Timer countdown
   useEffect(() => {
     if (!room?.gameState) return;
@@ -203,11 +210,23 @@ export function GamePage() {
           <ResultPanel
             guesses={room.gameState?.guesses ?? []}
             participants={room.participants}
+            isRoundEnded={isRoundEnded}
           />
         </div>
       </div>
 
       <div className="button-row">
+        {isRoundEnded && room.isHost && (
+          <button
+            className="button button--primary"
+            onClick={async () => {
+              await roomStore.restartGame();
+              navigate("/lobby");
+            }}
+          >
+            Play Again
+          </button>
+        )}
         <button className="button button--secondary" onClick={() => navigate("/lobby")}>
           Exit Game
         </button>

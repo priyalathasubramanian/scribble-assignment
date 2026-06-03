@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addStroke, checkRoundExpiry, clearCanvas, createRoom, getRoom, joinRoom, startGame, submitGuess, toRoomSnapshot } from "./roomStore.js";
+import { addStroke, checkRoundExpiry, clearCanvas, createRoom, getRoom, joinRoom, restartGame, startGame, submitGuess, toRoomSnapshot } from "./roomStore.js";
 import { ROUND_DURATION_SECONDS } from "../seed/starterData.js";
 
 describe("roomStore", () => {
@@ -335,5 +335,134 @@ describe("roomStore", () => {
     checkRoundExpiry(room);
 
     expect(() => submitGuess(created.room.code, joined!.participantId, "rocket")).toThrow("Round is not active");
+  });
+
+  // restartGame
+  it("restartGame transitions ended room back to lobby and clears round state", () => {
+    const created = createRoom("Alice");
+    joinRoom(created.room.code, "Bob");
+    const room = startGame(created.room.code, created.participantId);
+    room.roundStartedAt = new Date(Date.now() - (ROUND_DURATION_SECONDS + 1) * 1000).toISOString();
+    checkRoundExpiry(room);
+
+    const result = restartGame(created.room.code, created.participantId);
+
+    expect(result.status).toBe("lobby");
+    expect(result.currentDrawerId).toBeNull();
+    expect(result.secretWord).toBeNull();
+    expect(result.strokes).toHaveLength(0);
+    expect(result.guesses).toHaveLength(0);
+    expect(result.correctGuessers).toHaveLength(0);
+    expect(result.roundStartedAt).toBeNull();
+  });
+
+  it("restartGame preserves cumulative scores", () => {
+    const created = createRoom("Alice");
+    const joined = joinRoom(created.room.code, "Bob");
+    startGame(created.room.code, created.participantId);
+    submitGuess(created.room.code, joined!.participantId, "rocket");
+    const room = getRoom(created.room.code)!;
+    room.roundStartedAt = new Date(Date.now() - (ROUND_DURATION_SECONDS + 1) * 1000).toISOString();
+    checkRoundExpiry(room);
+
+    const result = restartGame(created.room.code, created.participantId);
+
+    expect(result.scores[joined!.participantId]).toBe(100);
+    expect(result.scores[created.participantId]).toBe(0);
+  });
+
+  it("restartGame throws 404 for unknown room", () => {
+    expect(() => restartGame("ZZZZ", "any-id")).toThrow("Room not found");
+  });
+
+  it("restartGame throws 403 when non-host calls it", () => {
+    const created = createRoom("Alice");
+    const joined = joinRoom(created.room.code, "Bob");
+    const room = startGame(created.room.code, created.participantId);
+    room.roundStartedAt = new Date(Date.now() - (ROUND_DURATION_SECONDS + 1) * 1000).toISOString();
+    checkRoundExpiry(room);
+
+    expect(() => restartGame(created.room.code, joined!.participantId)).toThrow("Only the host can restart the game");
+  });
+
+  it("restartGame throws 409 when room is not ended", () => {
+    const created = createRoom("Alice");
+    joinRoom(created.room.code, "Bob");
+    startGame(created.room.code, created.participantId);
+
+    expect(() => restartGame(created.room.code, created.participantId)).toThrow("Game has not ended yet");
+  });
+
+  it("restartGame throws 409 when room is in lobby", () => {
+    const created = createRoom("Alice");
+
+    expect(() => restartGame(created.room.code, created.participantId)).toThrow("Game has not ended yet");
+  });
+
+  it("toRoomSnapshot exposes secretWord to all when status is ended", () => {
+    const created = createRoom("Alice");
+    const joined = joinRoom(created.room.code, "Bob");
+    const room = startGame(created.room.code, created.participantId);
+    room.roundStartedAt = new Date(Date.now() - (ROUND_DURATION_SECONDS + 1) * 1000).toISOString();
+    checkRoundExpiry(room);
+
+    const guesserSnapshot = toRoomSnapshot(room, joined!.participantId);
+
+    expect(guesserSnapshot.secretWord).toBe("rocket");
+  });
+
+  it("toRoomSnapshot returns gameState null and scores array after restart", () => {
+    const created = createRoom("Alice");
+    joinRoom(created.room.code, "Bob");
+    const room = startGame(created.room.code, created.participantId);
+    room.roundStartedAt = new Date(Date.now() - (ROUND_DURATION_SECONDS + 1) * 1000).toISOString();
+    checkRoundExpiry(room);
+    restartGame(created.room.code, created.participantId);
+
+    const restarted = getRoom(created.room.code)!;
+    const snapshot = toRoomSnapshot(restarted, created.participantId);
+
+    expect(snapshot.status).toBe("lobby");
+    expect(snapshot.gameState).toBeNull();
+    expect(snapshot.scores).toHaveLength(2);
+  });
+
+  it("toRoomSnapshot always populates scores field in lobby phase", () => {
+    const created = createRoom("Alice");
+    joinRoom(created.room.code, "Bob");
+    const room = getRoom(created.room.code)!;
+
+    const snapshot = toRoomSnapshot(room, created.participantId);
+
+    expect(snapshot.scores).toBeDefined();
+    expect(snapshot.scores).toHaveLength(2);
+    expect(snapshot.scores.every((s) => s.score === 0)).toBe(true);
+  });
+
+  it("startGame preserves existing scores across restarts", () => {
+    const created = createRoom("Alice");
+    const joined = joinRoom(created.room.code, "Bob");
+    startGame(created.room.code, created.participantId);
+    submitGuess(created.room.code, joined!.participantId, "rocket");
+    const room = getRoom(created.room.code)!;
+    room.roundStartedAt = new Date(Date.now() - (ROUND_DURATION_SECONDS + 1) * 1000).toISOString();
+    checkRoundExpiry(room);
+    restartGame(created.room.code, created.participantId);
+
+    const started2 = startGame(created.room.code, created.participantId);
+
+    expect(started2.scores[joined!.participantId]).toBe(100);
+    expect(started2.scores[created.participantId]).toBe(0);
+  });
+
+  it("checkRoundExpiry still transitions to ended after startGame score-init patch", () => {
+    const created = createRoom("Alice");
+    joinRoom(created.room.code, "Bob");
+    const room = startGame(created.room.code, created.participantId);
+    room.roundStartedAt = new Date(Date.now() - (ROUND_DURATION_SECONDS + 1) * 1000).toISOString();
+
+    checkRoundExpiry(room);
+
+    expect(room.status).toBe("ended");
   });
 });

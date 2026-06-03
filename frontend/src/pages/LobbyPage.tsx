@@ -61,12 +61,18 @@ export function LobbyPage() {
             <p>No participants are connected to this room yet.</p>
           ) : (
             <ul className="player-list">
-              {room.participants.map((participant) => (
-                <li key={participant.id}>
-                  <span>{participant.name}</span>
-                  <span className="player-list__meta">joined</span>
-                </li>
-              ))}
+              {room.participants.map((participant) => {
+                const scoreEntry = room.scores.find((s) => s.participantId === participant.id);
+                const score = scoreEntry?.score ?? 0;
+                return (
+                  <li key={participant.id}>
+                    <span>{participant.name}</span>
+                    <span className="player-list__meta">
+                      {score > 0 ? `${score} pts` : "joined"}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </Card>

@@ -142,7 +142,11 @@ export function startGame(code: string, participantId: string) {
   room.strokes = [];
   room.guesses = [];
   room.correctGuessers = [];
-  room.scores = Object.fromEntries(room.participants.map((p) => [p.id, 0]));
+  for (const p of room.participants) {
+    if (!(p.id in room.scores)) {
+      room.scores[p.id] = 0;
+    }
+  }
   room.roundStartedAt = now();
   room.roundDurationSeconds = ROUND_DURATION_SECONDS;
   room.updatedAt = now();
@@ -194,10 +198,29 @@ export function clearCanvas(code: string, participantId: string) {
   rooms.set(room.code, room);
 }
 
+export function restartGame(code: string, participantId: string) {
+  const room = rooms.get(code.toUpperCase());
+  if (!room) throw new HttpError(404, "Room not found");
+  if (participantId !== room.hostId) throw new HttpError(403, "Only the host can restart the game");
+  if (room.status !== "ended") throw new HttpError(409, "Game has not ended yet");
+  room.status = "lobby";
+  room.currentDrawerId = null;
+  room.secretWord = null;
+  room.strokes = [];
+  room.guesses = [];
+  room.correctGuessers = [];
+  room.roundStartedAt = null;
+  room.updatedAt = now();
+  rooms.set(room.code, room);
+  return cloneRoom(room);
+}
+
 export function toRoomSnapshot(room: Room, viewerParticipantId?: string): RoomSnapshot {
   checkRoundExpiry(room);
   const isDrawer = room.status !== "lobby" && viewerParticipantId === room.currentDrawerId;
   const revealWord = room.status === "ended";
+
+  const scores = room.participants.map((p) => ({ participantId: p.id, score: room.scores[p.id] ?? 0 }));
 
   let gameState: GameState | null = null;
   if (room.status === "playing" || room.status === "ended") {
@@ -208,7 +231,7 @@ export function toRoomSnapshot(room: Room, viewerParticipantId?: string): RoomSn
       roundEndsAt,
       strokes: room.strokes.map((s) => ({ points: s.points.map((p) => ({ ...p })) })),
       guesses: room.guesses.map((g) => ({ ...g })),
-      scores: room.participants.map((p) => ({ participantId: p.id, score: room.scores[p.id] ?? 0 })),
+      scores,
       correctGuessers: [...room.correctGuessers]
     };
   }
@@ -221,6 +244,7 @@ export function toRoomSnapshot(room: Room, viewerParticipantId?: string): RoomSn
     isHost: viewerParticipantId === room.hostId,
     currentDrawerId: room.currentDrawerId,
     secretWord: isDrawer || revealWord ? room.secretWord : null,
+    scores,
     gameState
   };
 }

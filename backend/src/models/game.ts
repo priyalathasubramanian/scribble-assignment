@@ -51,6 +51,7 @@ export interface RoomSnapshot {
   isHost: boolean;
   currentDrawerId: string | null;
   secretWord: string | null;
+  scores: Array<{ participantId: string; score: number }>;
   gameState: GameState | null;
 }
 

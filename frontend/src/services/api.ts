@@ -31,6 +31,7 @@ export interface RoomSnapshot {
   isHost: boolean;
   currentDrawerId: string | null;
   secretWord: string | null;
+  scores: Array<{ participantId: string; score: number }>;
   gameState: GameState | null;
 }
 
@@ -100,6 +101,12 @@ export const api = {
     return request<{ guess: Guess }>(`/rooms/${encodeURIComponent(code)}/guess`, {
       method: "POST",
       body: JSON.stringify({ participantId, text })
+    });
+  },
+  restartGame(code: string, participantId: string) {
+    return request<{ room: RoomSnapshot }>(`/rooms/${encodeURIComponent(code)}/restart`, {
+      method: "POST",
+      body: JSON.stringify({ participantId })
     });
   }
 };

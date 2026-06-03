@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addStrokeSchema, clearCanvasSchema, createRoomSchema, roomCodeParamsSchema, submitGuessSchema } from "./schemas.js";
+import { addStrokeSchema, clearCanvasSchema, createRoomSchema, restartGameSchema, roomCodeParamsSchema, submitGuessSchema } from "./schemas.js";
 
 describe("schemas", () => {
   it("createRoomSchema accepts a valid body with playerName", () => {
@@ -60,5 +60,18 @@ describe("schemas", () => {
 
   it("clearCanvasSchema rejects missing participantId", () => {
     expect(() => clearCanvasSchema.parse({})).toThrow();
+  });
+
+  it("restartGameSchema accepts valid participantId", () => {
+    const result = restartGameSchema.parse({ participantId: "p1" });
+    expect(result.participantId).toBe("p1");
+  });
+
+  it("restartGameSchema rejects missing participantId", () => {
+    expect(() => restartGameSchema.parse({})).toThrow();
+  });
+
+  it("restartGameSchema rejects empty string participantId", () => {
+    expect(() => restartGameSchema.parse({ participantId: "" })).toThrow();
   });
 });
