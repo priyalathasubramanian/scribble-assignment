@@ -7,7 +7,7 @@ import {
   useSyncExternalStore,
   type PropsWithChildren
 } from "react";
-import { api, type RoomSessionResponse, type RoomSnapshot } from "../services/api";
+import { api, type RoomSessionResponse, type RoomSnapshot, type Stroke } from "../services/api";
 
 export interface RoomState {
   room: RoomSnapshot | null;
@@ -18,7 +18,7 @@ export interface RoomState {
 
 type Listener = () => void;
 
-class RoomStore {
+export class RoomStore {
   private state: RoomState = {
     room: null,
     participantId: null,
@@ -109,6 +109,35 @@ class RoomStore {
     const response = await api.fetchRoom(this.state.room.code, this.state.participantId ?? undefined);
     this.setRoomSnapshot(response.room);
     return response.room;
+  }
+
+  async addStroke(stroke: Stroke) {
+    if (!this.state.room || !this.state.participantId) return;
+    try {
+      await api.addStroke(this.state.room.code, this.state.participantId, stroke);
+    } catch {
+      // silent — drawing continues locally on failure
+    }
+  }
+
+  async clearCanvas() {
+    if (!this.state.room || !this.state.participantId) return;
+    try {
+      await api.clearCanvas(this.state.room.code, this.state.participantId);
+    } catch {
+      // silent
+    }
+  }
+
+  async submitGuess(text: string) {
+    if (!this.state.room || !this.state.participantId) return null;
+    try {
+      return await api.submitGuess(this.state.room.code, this.state.participantId, text);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to submit guess";
+      this.setState({ error: message });
+      return null;
+    }
   }
 
   async fetchRoomSilent() {

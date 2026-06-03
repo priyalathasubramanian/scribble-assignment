@@ -9,3 +9,5 @@ export const STARTER_WORDS = [
 ] as const;
 
 export const STARTER_ROLES: ParticipantRole[] = ["drawer", "guesser"];
+
+export const ROUND_DURATION_SECONDS = 60;
